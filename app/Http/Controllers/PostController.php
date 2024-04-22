@@ -7,6 +7,8 @@ use Illuminate\View\View;
 use Illuminate\Http\Request;
 //return type redirectResponse
 use Illuminate\Http\RedirectResponse;
+//import Facade "Storage"
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -77,5 +79,69 @@ class PostController extends Controller
 
         //render view with post
         return view('posts.show', compact('post'));
+    }
+
+    /**
+     * edit
+     *
+     * @param  mixed $id
+     * @return View
+     */
+    public function edit(string $id): View
+    {
+        //get post by ID
+        $post = Post::findOrFail($id);
+
+        //render view with post
+        return view('posts.edit', compact('post'));
+    }
+    
+    /**
+     * update
+     *
+     * @param  mixed $request
+     * @param  mixed $id
+     * @return RedirectResponse
+     */
+    public function update(Request $request, $id): RedirectResponse
+    {
+        //validate form
+        $this->validate($request, [
+            'image'     => 'image|mimes:jpeg,jpg,png|max:2048',
+            'title'     => 'required|min:5',
+            'content'   => 'required|min:10'
+        ]);
+
+        //get post by ID
+        $post = Post::findOrFail($id);
+
+        //check if image is uploaded
+        if ($request->hasFile('image')) {
+
+            //upload new image
+            $image = $request->file('image');
+            $image->storeAs('public/posts', $image->hashName());
+
+            //delete old image
+            Storage::delete('public/posts/'.$post->image);
+
+            //update post with new image
+            $post->update([
+                'image'     => $image->hashName(),
+                'title'     => $request->title,
+                'content'   => $request->content
+            ]);
+
+        } else {
+
+            //update post without image
+            $post->update([
+                'title'     => $request->title,
+                'content'   => $request->content
+            ]);
+        }
+
+        //redirect to index
+        return redirect()->route('posts.index')->with(['success' => 'Data Berhasil Diubah!']);
     }
 }
